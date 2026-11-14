@@ -1,0 +1,7 @@
+__pycache__/
+*.py[cod]
+.venv/
+cache_hackathons.json
+annonces_vues.json
+.env
+logs/
