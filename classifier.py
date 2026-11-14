@@ -333,7 +333,16 @@ def classifier(annonce, today=None):
     entite = _strip_invisibles(annonce.get("entite", ""))
     ville = annonce.get("ville", "") or annonce.get("lieu", "")
 
-    est, motif = detect_hackathon(poste, texte)
+    # Les collecteurs qui scrapent un catalogue 100 % hackathons par
+    # construction (Devpost, MLH) nous disent "pas besoin de re-prouver"
+    # via `est_hackathon_force=True`. Ça évite de rejeter des titres
+    # réels comme "Codegeist 2026", "Kiroween", "Quackhacks 3" qui ne
+    # contiennent pas le mot "hackathon" littéralement mais SONT des
+    # hackathons.
+    if annonce.get("est_hackathon_force"):
+        est, motif = True, ""
+    else:
+        est, motif = detect_hackathon(poste, texte)
     online = is_online(poste, ville, texte)
     hm = hors_maroc(poste, ville, texte)
     domaine = tag_domaine(poste, texte)

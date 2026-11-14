@@ -6,12 +6,18 @@ Chaque collecteur renvoie une liste de dicts avec les mêmes clés :
 
 robots.txt vérifié le 2026-11-14 pour chaque source (voir le commentaire
 dédié au-dessus de chaque collecteur). Un délai de REQUEST_DELAY_SECONDS
-s'applique entre deux collecteurs, et jamais plus d'une requête concurrente
-par hôte. Aucune authentification, aucune API privée.
+s'applique entre deux collecteurs. Aucune authentification, aucune API
+privée.
 
 Chaque collecteur est best-effort (échec silencieux -> liste vide, jamais
 d'exception propagée au pipeline) : un changement de markup côté source
 ne doit pas casser le run global.
+
+Note sur Eventbrite (retiré) : la recherche publique `/d/morocco/hackathon/`
+ne filtre pas réellement sur le mot-clé, elle renvoyait des conférences /
+summits / meetups marocains (Odoo Business Show, Leadership Summit, chess
+networking...) écartés à 100 % en aval. En plus, Eventbrite répond 405
+depuis les IP cloud (GitHub Actions) — bruit pur sans aucun gain.
 """
 import datetime as dt
 import json
@@ -24,12 +30,6 @@ import requests
 from bs4 import BeautifulSoup
 
 
-# User-Agent de navigateur réaliste — un UA auto-identifiant reçoit souvent
-# un 403 des WAF génériques (constat déjà fait dans sourcing-regie-banque
-# et sourcing-stages-maroc). Les robots.txt des 3 sources utilisées ici
-# n'exigent pas d'identifiant bot particulier (aucune règle `User-agent:
-# <bot>` qui serait "la nôtre") — donc un UA honnête côté forme sans être
-# auto-identifiant reste conforme à leurs règles affichées.
 USER_AGENTS = [
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
     "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
@@ -57,41 +57,16 @@ def _get(url, params=None, accept="text/html"):
     return r
 
 
-def _extract_jsonld(html):
-    """Toutes les balises <script type="application/ld+json"> parsées."""
-    out = []
-    soup = BeautifulSoup(html, "html.parser")
-    for tag in soup.find_all("script", {"type": "application/ld+json"}):
-        raw = tag.string or tag.get_text() or ""
-        if not raw.strip():
-            continue
-        try:
-            data = json.loads(raw)
-        except json.JSONDecodeError:
-            continue
-        if isinstance(data, list):
-            out.extend(data)
-        else:
-            out.append(data)
-    return out
-
-
 # ============================================================ DEVPOST
 # robots.txt vérifié 2026-11-14 : "User-agent: * / Disallow:" (vide) =
-# tout autorisé aux bots génériques. Seuls quelques crawlers NOMMÉS
-# (BLEXBot, Omgilibot, ImagesiftBot, Bytespider) sont bannis — aucune
-# règle qui s'applique à nous. `/api/hackathons` n'a pas de règle
-# spécifique -> libre.
+# tout autorisé aux bots génériques. `/api/hackathons` libre.
 DEVPOST_API = "https://devpost.com/api/hackathons"
-DEVPOST_MAX_PAGES = 3  # 30 hackathons / page, suffisant pour les upcoming
+DEVPOST_MAX_PAGES = 3
 
 
 def collect_devpost():
     """Devpost expose une API JSON publique à `/api/hackathons` qui
-    renvoie `{hackathons: [...], meta: {total_count, ...}}`. On filtre
-    côté client sur les événements "upcoming" ou "open" (le paramètre
-    `status[]` est accepté mais pas garanti stable, on le passe quand même
-    pour alléger la charge serveur)."""
+    renvoie `{hackathons: [...], meta: {total_count, ...}}`."""
     print("  → Devpost")
     out = []
     for page in range(1, DEVPOST_MAX_PAGES + 1):
@@ -116,7 +91,6 @@ def collect_devpost():
             org = h.get("organization_name") or "Devpost"
             loc = h.get("displayed_location") or {}
             ville = loc.get("location", "") if isinstance(loc, dict) else str(loc)
-            # "Nov 14 - Dec 05, 2026" ou "Oct 30 - Dec 04, 2026"
             dates_txt = h.get("submission_period_dates") or ""
             debut, fin = _parse_devpost_dates(dates_txt)
             texte = h.get("subtitle") or ""
@@ -125,6 +99,12 @@ def collect_devpost():
                 "ville": ville or "Online",
                 "url": url, "date_debut": debut, "date_fin": fin,
                 "texte": texte, "source": "Devpost",
+                # Devpost = catalogue 100 % hackathons par construction :
+                # on dit explicitement au classifieur qu'il n'a pas besoin
+                # de re-prouver que c'en est un (évite les faux rejets
+                # comme "Codegeist" / "Kiroween" qui n'ont pas le mot
+                # "hackathon" dans le titre).
+                "est_hackathon_force": True,
             })
         meta = data.get("meta") or {}
         if meta.get("current_page", page) >= meta.get("total_pages", page):
@@ -142,9 +122,7 @@ _DP_RANGE_RE = re.compile(
 
 
 def _parse_devpost_dates(s):
-    """'Oct 30 - Dec 04, 2026' / 'Nov 14 - 16, 2026' -> (iso, iso).
-    Renvoie ('', '') si format inconnu — toléré par le classifier (fenêtre
-    INCONNUE, ne jette pas la ligne)."""
+    """'Oct 30 - Dec 04, 2026' / 'Nov 14 - 16, 2026' -> (iso, iso)."""
     if not s:
         return "", ""
     m = _DP_RANGE_RE.search(s)
@@ -162,18 +140,27 @@ def _parse_devpost_dates(s):
 
 # ================================================================ MLH
 # robots.txt vérifié 2026-11-14 : "User-agent: * / Allow: /" avec quelques
-# exclusions (/account/, /admin/, /tools/, /auth/, /sidekiq/, /_/, /v4/,
-# /marksmith/, /events/*/partners/.../promo_codes/, /projects/invites/,
-# /submissions/invites/) — /seasons/.../events n'y est pas et reste libre.
-MLH_SEASONS = ["2026", "2027"]  # couvre l'année en cours + la suivante
+# exclusions (/account/, /admin/, /tools/, ...). /seasons/.../events libre.
+#
+# Même logique que Devpost : MLH est un catalogue 100 % hackathons
+# étudiants, pas besoin de re-prouver via mots-clés (les titres style
+# "Quackhacks 3" / "HackCMU" / "HopHacks" ne contiennent pas forcément
+# "hackathon" littéralement).
+MLH_SEASONS = ["2026", "2027"]
 
 
 def collect_mlh():
-    """MLH (Major League Hacking) : pages par saison. Chaque événement
-    est maintenant exposé via microdata schema.org (`itemtype="Event"`)
-    avec `itemprop="name"/"startDate"/"city"`. Le format a changé fin
-    2026 : les anciens sélecteurs `.event-wrapper` ont disparu, on passe
-    par `itemtype` qui est plus stable (contrat schema.org)."""
+    """MLH (Major League Hacking) : pages par saison. Markup récent :
+    chaque événement est un `<a itemtype="schema.org/Event">` contenant
+    un `<h4>` avec le vrai nom de l'événement (ex. "Quackhacks 3"),
+    un `<meta itemprop="startDate">`, un `<meta itemprop="endDate">`,
+    une `<div itemprop="location">` avec `<meta itemprop="addressLocality">`
+    et `<meta itemprop="addressCountry">`, et un `<meta itemprop=
+    "eventAttendanceMode">` qui dit "Online" / "Offline" / "Mixed".
+
+    Les versions antérieures du scraper utilisaient `itemprop="name"` qui
+    était sur la LOCATION (nom de la ville), ce qui faisait remonter
+    "Arlington, Texas" comme titre d'événement."""
     print("  → MLH")
     out = []
     for season in MLH_SEASONS:
@@ -184,118 +171,58 @@ def collect_mlh():
         events = soup.find_all(attrs={"itemtype":
             lambda v: v and "schema.org/Event" in v})
         for e in events:
-            name_el = e.find(attrs={"itemprop": "name"})
-            if not name_el:
-                continue
-            poste = name_el.get_text(" ", strip=True)
+            # Titre : <h4> dans la carte (le seul heading dans cet
+            # élément).
+            h = e.find(["h1", "h2", "h3", "h4", "h5", "h6"])
+            poste = h.get_text(" ", strip=True) if h else ""
             if not poste:
                 continue
-            start_el = e.find(attrs={"itemprop": "startDate"})
-            date_debut = ""
-            if start_el:
-                date_debut = (start_el.get("content")
-                              or start_el.get_text(" ", strip=True))[:10]
-            city_el = e.find(attrs={"itemprop": "city"})
-            region_el = e.find(attrs={"itemprop": "addressRegion"})
-            ville = ""
-            if city_el:
-                ville = city_el.get_text(" ", strip=True)
-            if region_el and region_el.get_text(strip=True) not in ville:
-                r_txt = region_el.get_text(" ", strip=True)
-                ville = f"{ville}, {r_txt}" if ville else r_txt
-            # Format MLH : il n'y a pas d'`itemprop="url"`, les tuiles
-            # linkent vers la page MLH de l'événement via <a href="...">
-            # parent de l'ensemble.
-            a = e.find("a", href=True)
-            url = ""
-            if a:
-                href = a["href"]
-                url = href if href.startswith("http") else f"https://mlh.io{href}"
+            start = e.find("meta", itemprop="startDate")
+            end = e.find("meta", itemprop="endDate")
+            date_debut = (start.get("content") if start else "")[:10]
+            date_fin = (end.get("content") if end else "")[:10]
+            # Lieu : la location est une sous-balise avec son propre
+            # itemprop="addressLocality" / "addressCountry".
+            locality = e.find("meta", itemprop="addressLocality")
+            country = e.find("meta", itemprop="addressCountry")
+            ville = locality.get("content") if locality else ""
+            if country and country.get("content"):
+                ville = f"{ville}, {country.get('content')}" if ville else country.get("content")
+            # Mode : OnlineEventAttendanceMode / OfflineEventAttendanceMode /
+            # MixedEventAttendanceMode.
+            mode = e.find("meta", itemprop="eventAttendanceMode")
+            mode_txt = (mode.get("content") if mode else "") or ""
+            en_ligne = "Online" in mode_txt or "Mixed" in mode_txt
+            # Si en ligne, on force "Online" côté ville pour que le
+            # classifieur garde l'événement même si l'org est hors Maroc.
+            if en_ligne:
+                ville = "Online"
+            # URL : l'événement est lui-même un <a href="...">.
+            url = e.get("href", "")
+            if not url and e.name != "a":
+                a = e.find("a", href=True)
+                url = a["href"] if a else ""
             out.append({
                 "poste": poste, "entite": "MLH",
-                "ville": ville or "Online",
-                "url": url, "date_debut": date_debut,
-                "date_fin": "", "texte": "",
-                "source": "MLH",
+                "ville": ville, "url": url,
+                "date_debut": date_debut, "date_fin": date_fin,
+                "texte": "", "source": "MLH",
+                "est_hackathon_force": True,
             })
         time.sleep(REQUEST_DELAY_SECONDS)
     print(f"    {len(out)} événements MLH")
     return out
 
 
-# ========================================================= EVENTBRITE
-# robots.txt vérifié 2026-11-14 : "User-agent: *" avec de nombreuses
-# exclusions (`/api/v3/destination/events/`, `/directory/`, `/checkout-
-# external*`, rss/atom/calendar...). La page `/d/<pays>/<mot-clé>/` n'y
-# est pas listée -> libre. On évite SCRUPULEUSEMENT les endpoints API
-# listés dans le Disallow (aucun appel à /api/v3/...).
-EVENTBRITE_URL = "https://www.eventbrite.com/d/morocco/hackathon/"
-
-
-def collect_eventbrite():
-    """Eventbrite : la recherche publique `/d/morocco/hackathon/` ne
-    filtre pas réellement sur "hackathon" (elle renvoie souvent des
-    conférences / summits au Maroc). Les faux positifs sont écartés en
-    aval par `classifier.detect_hackathon` — pas un bug de ce collecteur,
-    juste la réalité du moteur Eventbrite."""
-    print("  → Eventbrite (Maroc)")
-    r = _get(EVENTBRITE_URL)
-    if not r:
-        return []
-    out = []
-    for obj in _extract_jsonld(r.text):
-        items = []
-        if isinstance(obj, dict) and obj.get("@type") in ("ItemList",
-                                                            "ItemListElement"):
-            items = obj.get("itemListElement") or []
-        elif isinstance(obj, dict) and obj.get("@type") == "Event":
-            items = [{"item": obj}]
-        for it in items:
-            ev = it.get("item") if isinstance(it, dict) and "item" in it else it
-            if not isinstance(ev, dict) or ev.get("@type") != "Event":
-                continue
-            poste = ev.get("name") or ""
-            if not poste:
-                continue
-            org = ev.get("organizer") or {}
-            if isinstance(org, list):
-                org = org[0] if org else {}
-            entite = org.get("name") if isinstance(org, dict) else ""
-            loc = ev.get("location") or {}
-            if isinstance(loc, list):
-                loc = loc[0] if loc else {}
-            ville = ""
-            if isinstance(loc, dict):
-                addr = loc.get("address") or {}
-                if isinstance(addr, dict):
-                    ville = (addr.get("addressLocality")
-                              or addr.get("addressRegion") or "")
-                ville = ville or loc.get("name") or ""
-            date_debut = (ev.get("startDate") or "")[:10]
-            date_fin = (ev.get("endDate") or "")[:10]
-            out.append({
-                "poste": poste, "entite": entite or "Eventbrite",
-                "ville": ville or "Maroc",
-                "url": ev.get("url") or "",
-                "date_debut": date_debut, "date_fin": date_fin,
-                "texte": ev.get("description") or "",
-                "source": "Eventbrite",
-            })
-    print(f"    {len(out)} événements Eventbrite")
-    return out
-
-
 # ================================================================ REGISTRE
+# Eventbrite retiré (cf. docstring du module).
 COLLECTORS = [
     ("Devpost", collect_devpost),
     ("MLH", collect_mlh),
-    ("Eventbrite", collect_eventbrite),
 ]
 
 
 def collect_all():
-    """Exécute tous les collecteurs en série avec délai. Un échec n'empêche
-    pas les autres de tourner — on log l'exception et on continue."""
     out = []
     for name, fn in COLLECTORS:
         try:
