@@ -2,11 +2,11 @@ import Link from "next/link";
 import type { Hackathon } from "@/lib/db";
 
 const FENETRE_STYLE: Record<string, string> = {
-  "EN COURS": "bg-green-100 text-green-800 border-green-300",
-  IMMINENT: "bg-yellow-100 text-yellow-800 border-yellow-300",
-  "BIENTÔT": "bg-emerald-100 text-emerald-800 border-emerald-300",
-  "ANNONCÉ": "bg-blue-100 text-blue-800 border-blue-300",
-  INCONNUE: "bg-gray-100 text-gray-700 border-gray-300",
+  "EN COURS": "bg-emerald-500 text-white",
+  IMMINENT: "bg-amber-500 text-white",
+  "BIENTÔT": "bg-sky-500 text-white",
+  "ANNONCÉ": "bg-slate-500 text-white",
+  INCONNUE: "bg-slate-400 text-white",
 };
 
 function formatRange(debut: string | null, fin: string | null) {
@@ -16,33 +16,109 @@ function formatRange(debut: string | null, fin: string | null) {
 }
 
 export function HackathonCard({ h }: { h: Hackathon }) {
-  const fenStyle =
-    FENETRE_STYLE[h.fenetre] ?? "bg-gray-100 text-gray-700 border-gray-300";
+  const fenStyle = FENETRE_STYLE[h.fenetre] ?? "bg-slate-400 text-white";
   return (
-    <Link
-      href={`/hackathon/${h.slug}`}
-      className="block rounded-lg border border-[color:var(--border)] p-4 hover:border-[color:var(--accent)] transition"
-    >
-      <div className="flex items-start justify-between gap-3">
-        <h3 className="font-semibold leading-snug flex-1">{h.titre}</h3>
+    <Link href={`/hackathon/${h.slug}`} className="card p-5 block group">
+      <div className="flex items-start justify-between gap-3 mb-3">
+        <h3 className="font-semibold leading-snug flex-1 group-hover:text-[color:var(--accent)] transition">
+          {h.titre}
+        </h3>
         <span
-          className={`shrink-0 text-xs px-2 py-0.5 rounded border ${fenStyle}`}
+          className={`shrink-0 text-xs font-medium px-2 py-1 rounded-md ${fenStyle}`}
         >
           {h.fenetre}
         </span>
       </div>
-      <div className="mt-2 text-sm text-[color:var(--muted)] space-y-0.5">
-        {h.organisateur && <div>{h.organisateur}</div>}
-        <div>
-          {h.en_ligne ? "En ligne" : h.ville || "Maroc"} ·{" "}
+
+      {h.organisateur && (
+        <p className="text-sm font-medium mb-2">{h.organisateur}</p>
+      )}
+
+      <div className="flex flex-wrap items-center gap-2 text-xs text-[color:var(--muted)] mb-3">
+        <span className="inline-flex items-center gap-1">
+          {h.en_ligne ? (
+            <>
+              <IconGlobe />
+              En ligne
+            </>
+          ) : (
+            <>
+              <IconPin />
+              {h.ville || "Maroc"}
+            </>
+          )}
+        </span>
+        <span>·</span>
+        <span className="inline-flex items-center gap-1">
+          <IconCalendar />
           {formatRange(h.date_debut, h.date_fin)}
-        </div>
+        </span>
+      </div>
+
+      <div className="flex flex-wrap gap-1.5">
         {h.domaine && (
-          <div className="inline-block mt-1 text-xs px-2 py-0.5 rounded bg-[color:var(--border)]/40">
+          <span className="text-xs px-2 py-0.5 rounded-md bg-[color:var(--border)] text-[color:var(--foreground)]">
             {h.domaine}
-          </div>
+          </span>
+        )}
+        {h.source && (
+          <span className="text-xs px-2 py-0.5 rounded-md border border-[color:var(--border)] text-[color:var(--muted)]">
+            {h.source}
+          </span>
         )}
       </div>
     </Link>
+  );
+}
+
+function IconGlobe() {
+  return (
+    <svg
+      className="w-3.5 h-3.5"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <circle cx="12" cy="12" r="10" />
+      <path d="M2 12h20" />
+      <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+    </svg>
+  );
+}
+
+function IconPin() {
+  return (
+    <svg
+      className="w-3.5 h-3.5"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0z" />
+      <circle cx="12" cy="10" r="3" />
+    </svg>
+  );
+}
+
+function IconCalendar() {
+  return (
+    <svg
+      className="w-3.5 h-3.5"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <rect x="3" y="4" width="18" height="18" rx="2" />
+      <path d="M16 2v4M8 2v4M3 10h18" />
+    </svg>
   );
 }

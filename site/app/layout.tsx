@@ -19,17 +19,22 @@ export default function RootLayout({
   return (
     <html lang="fr">
       <body className="min-h-screen flex flex-col">
-        <header className="border-b border-[color:var(--border)]">
-          <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
-            <Link href="/" className="font-semibold text-lg">
-              Hackathons <span className="text-[color:var(--accent)]">Maroc</span>
+        <header className="sticky top-0 z-30 bg-[color:var(--surface)] border-b border-[color:var(--border)]">
+          <div className="max-w-6xl mx-auto px-5 py-4 flex items-center justify-between">
+            <Link href="/" className="flex items-center gap-2.5 font-semibold">
+              <span className="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-[color:var(--accent)] text-white font-bold">
+                H
+              </span>
+              <span className="text-base tracking-tight">
+                Hackathons Maroc
+              </span>
             </Link>
-            <nav className="text-sm text-[color:var(--muted)]">
+            <nav className="flex items-center gap-5 text-sm text-[color:var(--muted)]">
               <a
                 href="https://github.com/niangmamath/hackathon"
                 target="_blank"
                 rel="noreferrer"
-                className="hover:text-[color:var(--foreground)]"
+                className="hover:text-[color:var(--foreground)] transition"
               >
                 GitHub
               </a>
@@ -37,10 +42,13 @@ export default function RootLayout({
           </div>
         </header>
         <main className="flex-1">{children}</main>
-        <footer className="border-t border-[color:var(--border)] text-sm text-[color:var(--muted)]">
-          <div className="max-w-6xl mx-auto px-4 py-6">
-            Veille automatique — scrapers robots.txt-safe, mis à jour tous les
-            2 jours.
+        <footer className="mt-16 border-t border-[color:var(--border)] text-sm text-[color:var(--muted)]">
+          <div className="max-w-6xl mx-auto px-5 py-8 flex flex-col sm:flex-row items-center justify-between gap-3">
+            <p>
+              Veille automatique — scrapers robots.txt-safe, mis à jour tous
+              les 2 jours.
+            </p>
+            <p>Sources : Devpost · MLH · Eventbrite</p>
           </div>
         </footer>
       </body>
