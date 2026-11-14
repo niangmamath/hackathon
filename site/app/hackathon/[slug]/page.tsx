@@ -2,17 +2,24 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { getHackathonBySlug } from "@/lib/db";
+import {
+  ArrowRightIcon,
+  CalendarIcon,
+  FlashIcon,
+  GlobeIcon,
+  PinIcon,
+} from "@/components/icons";
 
 export const revalidate = 3600;
 
 type Params = Promise<{ slug: string }>;
 
 const FENETRE_STYLE: Record<string, string> = {
-  "EN COURS": "bg-emerald-500 text-white",
-  IMMINENT: "bg-amber-500 text-white",
-  "BIENTÔT": "bg-sky-500 text-white",
-  "ANNONCÉ": "bg-slate-500 text-white",
-  INCONNUE: "bg-slate-400 text-white",
+  "EN COURS": "bg-emerald-100 text-emerald-800 ring-emerald-600/20",
+  IMMINENT: "bg-amber-100 text-amber-800 ring-amber-600/20",
+  "BIENTÔT": "bg-sky-100 text-sky-800 ring-sky-600/20",
+  "ANNONCÉ": "bg-indigo-50 text-indigo-700 ring-indigo-600/20",
+  INCONNUE: "bg-gray-100 text-gray-600 ring-gray-500/20",
 };
 
 export async function generateMetadata({
@@ -29,6 +36,13 @@ export async function generateMetadata({
       h.description?.slice(0, 160) ||
       `Hackathon ${h.organisateur ?? ""} — ${h.ville ?? "Maroc"}`,
   };
+}
+
+function formatDate(iso: string | null): string {
+  if (!iso) return "date non précisée";
+  const [y, m, d] = iso.split("-");
+  if (!y || !m || !d) return iso;
+  return `${d}/${m}/${y}`;
 }
 
 export default async function HackathonPage({ params }: { params: Params }) {
@@ -59,104 +73,140 @@ export default async function HackathonPage({ params }: { params: Params }) {
         },
   };
 
-  const fenStyle = FENETRE_STYLE[h.fenetre] ?? "bg-slate-400 text-white";
+  const fenStyle = FENETRE_STYLE[h.fenetre] ?? FENETRE_STYLE.INCONNUE;
   const dates =
     h.date_debut && h.date_fin && h.date_debut !== h.date_fin
-      ? `${h.date_debut} → ${h.date_fin}`
-      : h.date_debut || h.date_fin || "Date à confirmer";
+      ? `${formatDate(h.date_debut)} → ${formatDate(h.date_fin)}`
+      : formatDate(h.date_debut || h.date_fin);
 
   return (
-    <article className="max-w-3xl mx-auto px-5 py-10">
+    <div className="flex min-h-full flex-col">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <nav className="mb-6 text-sm">
-        <Link
-          href="/"
-          className="text-[color:var(--muted)] hover:text-[color:var(--foreground)] transition inline-flex items-center gap-1"
-        >
-          ← Retour
-        </Link>
-      </nav>
 
-      <div className="flex items-center gap-2 mb-4">
-        <span
-          className={`text-xs font-medium px-2.5 py-1 rounded-md ${fenStyle}`}
-        >
-          {h.fenetre}
-        </span>
-        {h.en_ligne && (
-          <span className="text-xs font-medium px-2.5 py-1 rounded-md border border-[color:var(--border)]">
-            En ligne
-          </span>
-        )}
-      </div>
-
-      <h1 className="text-3xl sm:text-4xl font-bold tracking-tight mb-3">
-        {h.titre}
-      </h1>
-      {h.organisateur && (
-        <p className="text-lg text-[color:var(--muted)] mb-8">
-          par {h.organisateur}
-        </p>
-      )}
-
-      <div className="card p-5 mb-8">
-        <dl className="grid grid-cols-1 sm:grid-cols-2 gap-5 text-sm">
-          <Row label="Dates">{dates}</Row>
-          <Row label="Lieu">
-            {h.en_ligne ? "En ligne — ouvert au Maroc" : h.ville || "Maroc"}
-          </Row>
-          {h.domaine && <Row label="Domaine">{h.domaine}</Row>}
-          {h.source && <Row label="Source">{h.source}</Row>}
-        </dl>
-      </div>
-
-      {h.description && (
-        <div className="whitespace-pre-wrap text-[color:var(--foreground)] leading-relaxed mb-8">
-          {h.description}
-        </div>
-      )}
-
-      {h.url && (
-        <a
-          href={h.url}
-          target="_blank"
-          rel="noreferrer noopener"
-          className="btn-primary inline-flex items-center gap-2"
-        >
-          Voir / s&apos;inscrire
-          <svg
-            className="w-4 h-4"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
+      {/* Hero */}
+      <header className="relative overflow-hidden bg-gradient-to-br from-indigo-700 via-violet-700 to-fuchsia-700">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 opacity-20 [background-image:radial-gradient(circle_at_15%_10%,white,transparent_30%),radial-gradient(circle_at_85%_0%,white,transparent_25%)]"
+        />
+        <div className="relative mx-auto max-w-4xl px-4 py-8 sm:px-6 sm:py-10">
+          <Link
+            href="/"
+            className="inline-flex items-center gap-1 text-xs font-medium text-indigo-200 transition hover:text-white"
           >
-            <path d="M7 17 17 7M7 7h10v10" />
-          </svg>
-        </a>
-      )}
-    </article>
+            ← Tous les hackathons
+          </Link>
+          <div className="mt-3 flex items-center gap-2">
+            <span
+              className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset ${fenStyle}`}
+            >
+              {h.fenetre}
+            </span>
+            {h.en_ligne ? (
+              <span className="inline-flex items-center gap-1 rounded-full bg-white/15 px-2.5 py-0.5 text-xs font-medium text-white ring-1 ring-inset ring-white/30">
+                <GlobeIcon className="h-3.5 w-3.5" />
+                En ligne
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1 rounded-full bg-white/15 px-2.5 py-0.5 text-xs font-medium text-white ring-1 ring-inset ring-white/30">
+                <PinIcon className="h-3.5 w-3.5" />
+                {h.ville || "Maroc"}
+              </span>
+            )}
+          </div>
+          <h1 className="mt-3 flex items-start gap-2 text-2xl font-extrabold tracking-tight text-white sm:text-3xl">
+            <FlashIcon className="mt-1 h-6 w-6 shrink-0 sm:h-7 sm:w-7" />
+            {h.titre}
+          </h1>
+          {h.organisateur ? (
+            <p className="mt-1 text-sm text-indigo-100">
+              par <span className="font-semibold">{h.organisateur}</span>
+            </p>
+          ) : null}
+        </div>
+      </header>
+
+      <main className="mx-auto w-full max-w-4xl flex-1 px-4 py-8 sm:px-6">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <InfoCard icon={<CalendarIcon className="h-4 w-4" />} label="Dates">
+            {dates}
+          </InfoCard>
+          <InfoCard
+            icon={h.en_ligne ? <GlobeIcon className="h-4 w-4" /> : <PinIcon className="h-4 w-4" />}
+            label="Lieu"
+          >
+            {h.en_ligne ? "En ligne — ouvert au Maroc" : h.ville || "Maroc"}
+          </InfoCard>
+          {h.domaine ? (
+            <InfoCard
+              icon={<FlashIcon className="h-4 w-4" />}
+              label="Domaine"
+            >
+              {h.domaine}
+            </InfoCard>
+          ) : null}
+          {h.source ? (
+            <InfoCard
+              icon={<ArrowRightIcon className="h-4 w-4" />}
+              label="Source"
+            >
+              {h.source}
+            </InfoCard>
+          ) : null}
+        </div>
+
+        {h.description ? (
+          <div className="mt-6 whitespace-pre-wrap rounded-xl border border-gray-200 bg-white p-5 text-sm leading-relaxed text-gray-700 shadow-sm">
+            {h.description}
+          </div>
+        ) : null}
+
+        {h.url ? (
+          <div className="mt-8 flex justify-center">
+            <a
+              href={h.url}
+              target="_blank"
+              rel="noreferrer noopener"
+              className="inline-flex items-center gap-2 rounded-full bg-indigo-600 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-indigo-500/30 transition hover:bg-indigo-500"
+            >
+              Voir / s&apos;inscrire
+              <ArrowRightIcon className="h-4 w-4" />
+            </a>
+          </div>
+        ) : null}
+      </main>
+
+      <footer className="mt-auto border-t border-gray-200 bg-white">
+        <div className="mx-auto max-w-6xl px-4 py-6 text-center text-xs text-gray-400 sm:px-6">
+          Événement collecté automatiquement — vérifiez toujours les
+          conditions d&apos;inscription auprès de l&apos;organisateur.
+        </div>
+      </footer>
+    </div>
   );
 }
 
-function Row({
+function InfoCard({
+  icon,
   label,
   children,
 }: {
+  icon: React.ReactNode;
   label: string;
   children: React.ReactNode;
 }) {
   return (
-    <div>
-      <dt className="text-xs uppercase tracking-wide text-[color:var(--muted)] mb-1">
+    <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+      <div className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-gray-500">
+        <span className="text-indigo-500">{icon}</span>
         {label}
-      </dt>
-      <dd className="font-medium">{children}</dd>
+      </div>
+      <div className="mt-1 text-sm font-semibold text-gray-900">
+        {children}
+      </div>
     </div>
   );
 }

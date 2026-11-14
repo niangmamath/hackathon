@@ -1,5 +1,6 @@
 import { getHackathons, getDerniereMaj } from "@/lib/db";
 import HackathonsExplorer from "@/components/HackathonsExplorer";
+import { FlashIcon } from "@/components/icons";
 
 export const revalidate = 3600;
 
@@ -8,83 +9,34 @@ export default async function HomePage() {
 
   if (items === null) {
     return (
-      <div className="max-w-3xl mx-auto px-5 py-20 text-center">
-        <h1 className="text-2xl font-semibold mb-3">
-          Site en cours de configuration
-        </h1>
-        <p className="text-[color:var(--muted)]">
-          La variable <code>DATABASE_URL</code> n&apos;est pas encore définie.
-          Renseignez-la dans les variables d&apos;environnement Vercel puis
-          redéployez.
-        </p>
+      <div className="flex min-h-full flex-col">
+        <header className="bg-gradient-to-br from-indigo-700 via-violet-700 to-fuchsia-700 px-4 py-8 sm:px-6">
+          <h1 className="flex items-center gap-2 text-2xl font-extrabold text-white sm:text-3xl">
+            <FlashIcon className="h-6 w-6 shrink-0" />
+            Hackathons au Maroc
+          </h1>
+        </header>
+        <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 sm:px-6">
+          <div className="rounded-xl border border-amber-200 bg-amber-50 p-6 text-sm text-amber-800">
+            Base de données non configurée (variable{" "}
+            <code>DATABASE_URL</code> absente). Renseignez-la dans les
+            variables d&apos;environnement Vercel puis redéployez.
+          </div>
+        </main>
       </div>
     );
   }
 
-  const nbOnline = items.filter((h) => h.en_ligne).length;
-  const nbPhysique = items.length - nbOnline;
-  const nbEnCours = items.filter((h) => h.fenetre === "EN COURS").length;
-
   return (
-    <>
-      {/* Hero */}
-      <section className="bg-[color:var(--surface)] border-b border-[color:var(--border)]">
-        <div className="max-w-6xl mx-auto px-5 py-12 sm:py-16">
-          <h1 className="text-3xl sm:text-4xl font-bold tracking-tight mb-3">
-            Hackathons au Maroc & en ligne
-          </h1>
-          <p className="text-[color:var(--muted)] text-base sm:text-lg max-w-2xl">
-            Toute la veille tech marocaine — hackathons, datathons, ideathons
-            et CTF — en un seul endroit. Mise à jour automatique tous les 2
-            jours.
-          </p>
-
-          <div className="mt-8 grid grid-cols-3 gap-3 sm:gap-6 max-w-2xl">
-            <Stat value={items.length} label="suivis" />
-            <Stat value={nbEnCours} label="en cours" accent />
-            <Stat value={nbOnline} label="en ligne" />
-          </div>
-
-          {maj && (
-            <p className="mt-6 text-xs text-[color:var(--muted)]">
-              Dernière mise à jour :{" "}
-              {new Date(maj).toLocaleDateString("fr-FR", {
-                day: "numeric",
-                month: "long",
-                year: "numeric",
-              })}
-            </p>
-          )}
+    <div className="flex min-h-full flex-col">
+      <HackathonsExplorer items={items} derniereMaj={maj} />
+      <footer className="mt-auto border-t border-gray-200 bg-white">
+        <div className="mx-auto max-w-6xl px-4 py-6 text-center text-xs text-gray-400 sm:px-6">
+          Événements collectés automatiquement (Devpost, MLH, Eventbrite) —
+          vérifiez toujours les conditions d&apos;inscription auprès de
+          l&apos;organisateur avant de participer.
         </div>
-      </section>
-
-      {/* Liste */}
-      <section className="max-w-6xl mx-auto px-5 py-10">
-        <HackathonsExplorer items={items} />
-      </section>
-    </>
-  );
-}
-
-function Stat({
-  value,
-  label,
-  accent = false,
-}: {
-  value: number;
-  label: string;
-  accent?: boolean;
-}) {
-  return (
-    <div className="card p-4">
-      <div
-        className={`text-2xl sm:text-3xl font-bold tabular-nums ${accent ? "text-[color:var(--accent)]" : ""}`}
-      >
-        {value}
-      </div>
-      <div className="text-xs sm:text-sm text-[color:var(--muted)] mt-0.5">
-        {label}
-      </div>
+      </footer>
     </div>
   );
 }

@@ -1,124 +1,139 @@
 import Link from "next/link";
 import type { Hackathon } from "@/lib/db";
+import {
+  ArrowRightIcon,
+  CalendarIcon,
+  GlobeIcon,
+  PinIcon,
+} from "@/components/icons";
 
-const FENETRE_STYLE: Record<string, string> = {
-  "EN COURS": "bg-emerald-500 text-white",
-  IMMINENT: "bg-amber-500 text-white",
-  "BIENTÔT": "bg-sky-500 text-white",
-  "ANNONCÉ": "bg-slate-500 text-white",
-  INCONNUE: "bg-slate-400 text-white",
+const FENETRE_STYLE: Record<string, { badge: string; accent: string }> = {
+  "EN COURS": {
+    badge: "bg-emerald-100 text-emerald-800 ring-emerald-600/20",
+    accent: "bg-emerald-500",
+  },
+  IMMINENT: {
+    badge: "bg-amber-100 text-amber-800 ring-amber-600/20",
+    accent: "bg-amber-500",
+  },
+  "BIENTÔT": {
+    badge: "bg-sky-100 text-sky-800 ring-sky-600/20",
+    accent: "bg-sky-500",
+  },
+  "ANNONCÉ": {
+    badge: "bg-indigo-50 text-indigo-700 ring-indigo-600/20",
+    accent: "bg-indigo-400",
+  },
+  INCONNUE: {
+    badge: "bg-gray-100 text-gray-600 ring-gray-500/20",
+    accent: "bg-gray-300",
+  },
 };
+
+function Badge({
+  children,
+  className = "",
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <span
+      className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset ${className}`}
+    >
+      {children}
+    </span>
+  );
+}
+
+function formatDate(iso: string | null): string {
+  if (!iso) return "date non précisée";
+  const [y, m, d] = iso.split("-");
+  if (!y || !m || !d) return iso;
+  return `${d}/${m}/${y}`;
+}
 
 function formatRange(debut: string | null, fin: string | null) {
   if (!debut && !fin) return "Date à confirmer";
-  if (debut && fin && debut !== fin) return `${debut} → ${fin}`;
-  return debut || fin || "";
+  if (debut && fin && debut !== fin)
+    return `${formatDate(debut)} → ${formatDate(fin)}`;
+  return formatDate(debut || fin);
 }
 
 export function HackathonCard({ h }: { h: Hackathon }) {
-  const fenStyle = FENETRE_STYLE[h.fenetre] ?? "bg-slate-400 text-white";
+  const style = FENETRE_STYLE[h.fenetre] ?? FENETRE_STYLE.INCONNUE;
+  const estEnCours = h.fenetre === "EN COURS";
+
   return (
-    <Link href={`/hackathon/${h.slug}`} className="card p-5 block group">
-      <div className="flex items-start justify-between gap-3 mb-3">
-        <h3 className="font-semibold leading-snug flex-1 group-hover:text-[color:var(--accent)] transition">
+    <Link
+      href={`/hackathon/${h.slug}`}
+      className="group relative flex flex-col gap-3 overflow-hidden rounded-xl border border-gray-200 bg-white p-4 pl-5 shadow-sm transition duration-150 hover:-translate-y-0.5 hover:border-indigo-200 hover:shadow-lg"
+    >
+      <span
+        className={`absolute inset-y-0 left-0 w-1.5 ${style.accent}`}
+        aria-hidden
+      />
+
+      <div className="flex items-start justify-between gap-2">
+        <h3 className="text-sm font-semibold text-gray-900 group-hover:text-indigo-700 line-clamp-2">
           {h.titre}
         </h3>
-        <span
-          className={`shrink-0 text-xs font-medium px-2 py-1 rounded-md ${fenStyle}`}
-        >
-          {h.fenetre}
+        {estEnCours ? null : (
+          <Badge className={`shrink-0 ${style.badge}`}>{h.fenetre}</Badge>
+        )}
+      </div>
+
+      <div className="text-sm text-gray-600">
+        <span className="font-medium text-gray-800">
+          {h.organisateur || "Organisateur non précisé"}
         </span>
       </div>
 
-      {h.organisateur && (
-        <p className="text-sm font-medium mb-2">{h.organisateur}</p>
-      )}
-
-      <div className="flex flex-wrap items-center gap-2 text-xs text-[color:var(--muted)] mb-3">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500">
         <span className="inline-flex items-center gap-1">
           {h.en_ligne ? (
             <>
-              <IconGlobe />
+              <GlobeIcon className="h-3.5 w-3.5" />
               En ligne
             </>
           ) : (
             <>
-              <IconPin />
+              <PinIcon className="h-3.5 w-3.5" />
               {h.ville || "Maroc"}
             </>
           )}
         </span>
-        <span>·</span>
         <span className="inline-flex items-center gap-1">
-          <IconCalendar />
+          <CalendarIcon className="h-3.5 w-3.5" />
           {formatRange(h.date_debut, h.date_fin)}
         </span>
       </div>
 
-      <div className="flex flex-wrap gap-1.5">
-        {h.domaine && (
-          <span className="text-xs px-2 py-0.5 rounded-md bg-[color:var(--border)] text-[color:var(--foreground)]">
-            {h.domaine}
-          </span>
-        )}
-        {h.source && (
-          <span className="text-xs px-2 py-0.5 rounded-md border border-[color:var(--border)] text-[color:var(--muted)]">
-            {h.source}
-          </span>
-        )}
+      {h.description ? (
+        <p className="line-clamp-2 text-sm text-gray-500">{h.description}</p>
+      ) : null}
+
+      <div className="mt-auto flex flex-wrap items-center gap-1.5 pt-1">
+        <Badge className="bg-indigo-50 text-indigo-700 ring-indigo-600/20">
+          {h.domaine || "Généraliste"}
+        </Badge>
+        {h.en_ligne ? (
+          <Badge className="bg-fuchsia-50 text-fuchsia-700 ring-fuchsia-600/20">
+            En ligne
+          </Badge>
+        ) : null}
       </div>
+
+      <div className="flex items-center justify-between border-t border-gray-100 pt-2 text-xs text-gray-400">
+        <span>{h.source}</span>
+        <ArrowRightIcon className="h-3 w-3 text-gray-300 transition group-hover:text-indigo-400" />
+      </div>
+
+      {estEnCours ? (
+        <span className="absolute -right-8 top-3 rotate-45 bg-emerald-500 px-8 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white shadow-sm">
+          En cours
+        </span>
+      ) : null}
     </Link>
-  );
-}
-
-function IconGlobe() {
-  return (
-    <svg
-      className="w-3.5 h-3.5"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <circle cx="12" cy="12" r="10" />
-      <path d="M2 12h20" />
-      <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
-    </svg>
-  );
-}
-
-function IconPin() {
-  return (
-    <svg
-      className="w-3.5 h-3.5"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0z" />
-      <circle cx="12" cy="10" r="3" />
-    </svg>
-  );
-}
-
-function IconCalendar() {
-  return (
-    <svg
-      className="w-3.5 h-3.5"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <rect x="3" y="4" width="18" height="18" rx="2" />
-      <path d="M16 2v4M8 2v4M3 10h18" />
-    </svg>
   );
 }
