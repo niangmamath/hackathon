@@ -94,11 +94,19 @@ def collect_devpost():
             dates_txt = h.get("submission_period_dates") or ""
             debut, fin = _parse_devpost_dates(dates_txt)
             texte = h.get("subtitle") or ""
+            # `themes` : vocabulaire officiel Devpost (Machine Learning/AI,
+            # Gaming, AR/VR, IoT, Mobile, Web, Enterprise, Health, Education,
+            # Social Good, Blockchain, Fintech...). Beaucoup plus fiable que
+            # de deviner par mots-clés dans le titre/subtitle (ex. "Codegeist"
+            # ou "Kiroween" ne contiennent aucun mot thématique).
+            themes = [t.get("name") for t in (h.get("themes") or [])
+                      if isinstance(t, dict) and t.get("name")]
             out.append({
                 "poste": poste, "entite": org,
                 "ville": ville or "Online",
                 "url": url, "date_debut": debut, "date_fin": fin,
                 "texte": texte, "source": "Devpost",
+                "themes": themes,
                 # Devpost = catalogue 100 % hackathons par construction :
                 # on dit explicitement au classifieur qu'il n'a pas besoin
                 # de re-prouver que c'en est un (évite les faux rejets

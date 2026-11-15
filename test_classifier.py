@@ -88,13 +88,41 @@ class TestDomaines(unittest.TestCase):
         self.assertEqual(tag_domaine("AI Datathon", "machine learning"),
                           "IA / Data")
 
-    def test_tag_fintech(self):
+    def test_tag_blockchain(self):
+        # Blockchain/Web3 a été sorti de Fintech pour sa propre catégorie
+        # (vocabulaire Devpost distinct : "Blockchain", "Cryptocurrency").
         self.assertEqual(tag_domaine("Blockchain hackathon", "web3 DeFi"),
+                          "Blockchain / Web3")
+
+    def test_tag_fintech(self):
+        self.assertEqual(tag_domaine("Fintech hackathon", "banque paiement"),
                           "Fintech / Banque")
 
     def test_tag_defaut(self):
         self.assertEqual(tag_domaine("Hackathon général", ""),
-                          "Généraliste")
+                          "Non classé")
+
+    def test_tag_themes_devpost_ai(self):
+        # Les thèmes officiels Devpost priment sur les mots-clés : un
+        # titre neutre ("Codegeist 2026") mais thème "Machine Learning/AI"
+        # doit tomber en "IA / Data".
+        self.assertEqual(
+            tag_domaine("Codegeist 2026", "",
+                         themes=["Machine Learning/AI", "Enterprise"]),
+            "IA / Data")
+
+    def test_tag_themes_devpost_gaming(self):
+        self.assertEqual(
+            tag_domaine("Reddit's Game of the Day", "",
+                         themes=["Beginner Friendly", "Gaming"]),
+            "Jeu vidéo")
+
+    def test_tag_themes_neutres_ouvert(self):
+        # Seuls des thèmes neutres -> "Ouvert" (pas "Non classé").
+        self.assertEqual(
+            tag_domaine("DSH Hacks V2", "",
+                         themes=["Beginner Friendly", "Open Ended"]),
+            "Ouvert")
 
 
 class TestFenetre(unittest.TestCase):

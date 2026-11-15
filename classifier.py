@@ -228,7 +228,10 @@ DOMAINE_KW = {
     ],
     "Fintech / Banque": [
         "fintech", "finance", "bancaire", "banque", "paiement", "payment",
-        "blockchain", "crypto", "web3", "defi",
+    ],
+    "Blockchain / Web3": [
+        "blockchain", "crypto", "web3", "defi", "nft", "ethereum",
+        "solana",
     ],
     "Cybersécurité": [
         "cyber", "cybersecurite", "cybersécurité", "cybersecurity",
@@ -254,6 +257,17 @@ DOMAINE_KW = {
         "govtech", "civic", "social impact", "impact social",
         "humanitaire", "ngo", "ong",
     ],
+    "Jeu vidéo": ["gaming", "game jam", "videogame", "jeu vidéo"],
+    "AR / VR": ["ar/vr", "augmented reality", "virtual reality",
+                 "realite augmentee", "réalité augmentée", "xr "],
+    "IoT / Hardware": ["iot", "internet of things", "embedded",
+                        "embarqué", "hardware", "robotics", "robotique"],
+    "Web / Mobile": ["web app", "mobile app", "cross-platform",
+                      "progressive web", "react native", "flutter"],
+    "Productivité / Entreprise": ["enterprise", "productivity",
+                                   "productivité", "business tools",
+                                   "no code", "low code", "no-code",
+                                   "low-code"],
 }
 _DOMAINE_RE = {
     label: [re.compile(r"(?<!\w)" + re.escape(k) + r"(?!\w)")
@@ -262,7 +276,61 @@ _DOMAINE_RE = {
 }
 
 
-def tag_domaine(poste, texte):
+# Mapping des `themes` officiels Devpost vers nos domaines internes.
+# Clé : nom exact du thème dans l'API (`themes[].name`) — casse conservée.
+# Valeur : label de domaine à afficher. Les thèmes neutres (Open Ended,
+# Beginner Friendly, Lifehacks) ne sont PAS mappés : si un hackathon n'a
+# que ceux-là, on retombe sur la détection par mots-clés, puis "Ouvert".
+DEVPOST_THEMES_MAP = {
+    "Machine Learning/AI": "IA / Data",
+    "Gaming": "Jeu vidéo",
+    "AR/VR": "AR / VR",
+    "IoT": "IoT / Hardware",
+    "Mobile": "Web / Mobile",
+    "Web": "Web / Mobile",
+    "Enterprise": "Productivité / Entreprise",
+    "Productivity": "Productivité / Entreprise",
+    "Health": "Santé / HealthTech",
+    "Education": "EdTech",
+    "Social Good": "GovTech / Impact",
+    "Fintech": "Fintech / Banque",
+    "Blockchain": "Blockchain / Web3",
+    "Cryptocurrency": "Blockchain / Web3",
+    "Low/No Code": "Productivité / Entreprise",
+}
+
+# Thèmes "neutres" qui n'apportent pas d'info thématique — on ne les
+# prend en compte que s'il n'y a RIEN d'autre, auquel cas on étiquette
+# "Ouvert" plutôt que "Généraliste" (plus explicite).
+DEVPOST_THEMES_NEUTRES = {"Open Ended", "Beginner Friendly", "Lifehacks"}
+
+
+def _domaine_depuis_themes(themes):
+    """Prend la liste `themes` de Devpost, renvoie le premier domaine
+    non-neutre reconnu, ou `"Ouvert"` si seuls des thèmes neutres sont
+    présents, ou `None` si rien d'exploitable (laisse la main à la
+    détection par mots-clés)."""
+    if not themes:
+        return None
+    for t in themes:
+        if t in DEVPOST_THEMES_MAP:
+            return DEVPOST_THEMES_MAP[t]
+    # Aucun thème mappé -> si au moins un thème neutre reconnu, on dit
+    # explicitement "Ouvert" (meilleur que "Généraliste" qui laissait
+    # croire à un domaine propre).
+    if any(t in DEVPOST_THEMES_NEUTRES for t in themes):
+        return "Ouvert"
+    return None
+
+
+def tag_domaine(poste, texte, themes=None):
+    # Priorité 1 : thèmes officiels Devpost (vocabulaire controlé, plus
+    # fiable que deviner par mots-clés dans un titre stylisé).
+    via_themes = _domaine_depuis_themes(themes)
+    if via_themes:
+        return via_themes
+
+    # Priorité 2 : mots-clés dans titre + description.
     blob = f" {strip_accents(poste).lower()} {strip_accents(texte).lower()} "
     scores = {}
     for label, regs in _DOMAINE_RE.items():
@@ -270,7 +338,7 @@ def tag_domaine(poste, texte):
         if n:
             scores[label] = n
     if not scores:
-        return "Généraliste"
+        return "Non classé"
     return max(scores, key=scores.get)
 
 
@@ -345,7 +413,7 @@ def classifier(annonce, today=None):
         est, motif = detect_hackathon(poste, texte)
     online = is_online(poste, ville, texte)
     hm = hors_maroc(poste, ville, texte)
-    domaine = tag_domaine(poste, texte)
+    domaine = tag_domaine(poste, texte, annonce.get("themes"))
     fen = fenetre_from_event(annonce.get("date_debut"),
                               annonce.get("date_fin"), today)
 
