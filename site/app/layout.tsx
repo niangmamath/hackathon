@@ -1,13 +1,56 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { siteUrl } from "@/lib/site-url";
+
+const title = "Hackathons au Maroc — veille automatique";
+const description =
+  "Catalogue à jour des hackathons, datathons, ideathons et CTF au Maroc et en ligne accessibles depuis le Maroc. Collecte automatique sur Devpost, MLH et autres plateformes, mise à jour tous les 2 jours.";
 
 export const metadata: Metadata = {
-  title: {
-    default: "Hackathons Maroc — veille automatique",
-    template: "%s — Hackathons Maroc",
+  metadataBase: new URL(siteUrl),
+  title: { default: title, template: "%s · Hackathons Maroc" },
+  description,
+  applicationName: "Hackathons Maroc",
+  keywords: [
+    "hackathon Maroc",
+    "hackathon Casablanca",
+    "hackathon Rabat",
+    "datathon Maroc",
+    "ideathon Maroc",
+    "challenge tech Maroc",
+    "coding competition Maroc",
+    "hackathon en ligne",
+    "hackathon étudiant Maroc",
+    "Devpost",
+    "MLH Maroc",
+  ],
+  authors: [{ name: "Hackathons Maroc" }],
+  openGraph: {
+    title,
+    description,
+    url: siteUrl,
+    siteName: "Hackathons Maroc",
+    locale: "fr_MA",
+    type: "website",
   },
-  description:
-    "Catalogue à jour des hackathons, datathons et challenges tech au Maroc et en ligne accessibles depuis le Maroc.",
+  twitter: {
+    card: "summary_large_image",
+    title,
+    description,
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-video-preview": -1,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
+  },
+  alternates: { canonical: "/" },
+  formatDetection: { email: false, address: false, telephone: false },
 };
 
 export default function RootLayout({
@@ -16,7 +59,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="fr">
+    <html lang="fr" className="h-full antialiased">
       <body className="min-h-screen bg-gray-50 text-gray-900">{children}</body>
     </html>
   );

@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { getHackathonBySlug } from "@/lib/db";
+import { siteUrl } from "@/lib/site-url";
 import {
   ArrowRightIcon,
   CalendarIcon,
@@ -30,11 +31,31 @@ export async function generateMetadata({
   const { slug } = await params;
   const h = await getHackathonBySlug(slug);
   if (!h) return { title: "Hackathon introuvable" };
+
+  const path = `/hackathon/${slug}`;
+  const desc =
+    h.description?.slice(0, 160) ||
+    `${h.titre} — hackathon organisé par ${h.organisateur ?? "un collectif"}, ${
+      h.en_ligne ? "en ligne" : h.ville || "au Maroc"
+    }${h.date_debut ? `, du ${h.date_debut}` : ""}.`;
+
   return {
     title: h.titre,
-    description:
-      h.description?.slice(0, 160) ||
-      `Hackathon ${h.organisateur ?? ""} — ${h.ville ?? "Maroc"}`,
+    description: desc,
+    alternates: { canonical: path },
+    openGraph: {
+      title: h.titre,
+      description: desc,
+      url: path,
+      siteName: "Hackathons Maroc",
+      locale: "fr_MA",
+      type: "website",
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: h.titre,
+      description: desc,
+    },
   };
 }
 
@@ -50,11 +71,16 @@ export default async function HackathonPage({ params }: { params: Params }) {
   const h = await getHackathonBySlug(slug);
   if (!h) notFound();
 
-  const jsonLd: Record<string, unknown> = {
+  const pageUrl = `${siteUrl}/hackathon/${slug}`;
+
+  // JSON-LD schema.org/Event — Google reconnaît ce vocabulaire et peut
+  // afficher la carte "Event" dans les résultats (rich result).
+  const eventLd: Record<string, unknown> = {
     "@context": "https://schema.org",
     "@type": "Event",
     name: h.titre,
     description: h.description || undefined,
+    url: pageUrl,
     startDate: h.date_debut || undefined,
     endDate: h.date_fin || undefined,
     eventAttendanceMode: h.en_ligne
@@ -65,12 +91,30 @@ export default async function HackathonPage({ params }: { params: Params }) {
       ? { "@type": "Organization", name: h.organisateur }
       : undefined,
     location: h.en_ligne
-      ? { "@type": "VirtualLocation", url: h.url }
+      ? { "@type": "VirtualLocation", url: h.url || pageUrl }
       : {
           "@type": "Place",
           name: h.ville || "Maroc",
           address: { "@type": "PostalAddress", addressCountry: "MA" },
         },
+    isAccessibleForFree: true,
+    inLanguage: "fr",
+  };
+
+  // Breadcrumb structuré — améliore la présentation dans Google avec le
+  // fil d'Ariane sous le lien.
+  const breadcrumbLd = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      {
+        "@type": "ListItem",
+        position: 1,
+        name: "Accueil",
+        item: `${siteUrl}/`,
+      },
+      { "@type": "ListItem", position: 2, name: h.titre, item: pageUrl },
+    ],
   };
 
   const fenStyle = FENETRE_STYLE[h.fenetre] ?? FENETRE_STYLE.INCONNUE;
@@ -83,7 +127,11 @@ export default async function HackathonPage({ params }: { params: Params }) {
     <div className="flex min-h-full flex-col">
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(eventLd) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }}
       />
 
       {/* Hero */}
@@ -135,7 +183,13 @@ export default async function HackathonPage({ params }: { params: Params }) {
             {dates}
           </InfoCard>
           <InfoCard
-            icon={h.en_ligne ? <GlobeIcon className="h-4 w-4" /> : <PinIcon className="h-4 w-4" />}
+            icon={
+              h.en_ligne ? (
+                <GlobeIcon className="h-4 w-4" />
+              ) : (
+                <PinIcon className="h-4 w-4" />
+              )
+            }
             label="Lieu"
           >
             {h.en_ligne ? "En ligne — ouvert au Maroc" : h.ville || "Maroc"}
@@ -204,9 +258,7 @@ function InfoCard({
         <span className="text-indigo-500">{icon}</span>
         {label}
       </div>
-      <div className="mt-1 text-sm font-semibold text-gray-900">
-        {children}
-      </div>
+      <div className="mt-1 text-sm font-semibold text-gray-900">{children}</div>
     </div>
   );
 }
