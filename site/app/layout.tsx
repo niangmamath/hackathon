@@ -6,7 +6,7 @@ import { siteUrl } from "@/lib/site-url";
 
 const title = "Hackathons au Maroc — veille automatique";
 const description =
-  "Catalogue à jour des hackathons, datathons, ideathons et CTF au Maroc et en ligne accessibles depuis le Maroc. Collecte automatique sur Devpost, MLH et autres plateformes, mise à jour tous les 2 jours.";
+  "Catalogue à jour des hackathons, datathons, ideathons et CTF au Maroc et en ligne accessibles depuis le Maroc. Collecte automatique sur Devpost, MLH et autres plateformes, mise à jour chaque jour.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),

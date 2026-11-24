@@ -161,9 +161,9 @@ Ce projet est un **dépôt Git autonome** (pas mélangé au monorepo
 Workflow actif :
 [`.github/workflows/scrape_hackathons.yml`](.github/workflows/scrape_hackathons.yml).
 
-- Déclenché **tous les 2 jours à 06:00 UTC** (≈ 07h heure Maroc en
-  hiver, 08h en été) via le `schedule: cron: "0 6 */2 * *"` natif de
-  GitHub Actions.
+- Déclenché **tous les jours à 05:23 UTC** (≈ 06h20 heure Maroc) via le
+  `schedule: cron: "23 5 * * *"` natif de GitHub Actions. Minute décalée
+  du début d'heure : les crons à HH:00 sont les plus retardés par GitHub.
 - Déclenchement manuel aussi disponible (`workflow_dispatch`, bouton
   *Run workflow* dans l'onglet Actions).
 - Un seul secret requis côté dépôt : `DATABASE_URL` (Neon, port 5432,
@@ -176,7 +176,7 @@ Workflow actif :
 Pourquoi `schedule` natif ici (et pas Vercel Cron comme pour
 `sourcing-stages-maroc`) : il n'y a pas encore de site Next.js côté
 hackathons, et un retard best-effort de quelques minutes/heures est
-sans conséquence sur une veille "tous les 2 jours" (les hackathons ont
+sans conséquence sur une veille quotidienne (les hackathons ont
 des fenêtres de plusieurs jours à plusieurs semaines).
 
 ## Tests

@@ -3,23 +3,18 @@ name: Scraping hackathons Maroc
 # Dépôt dédié : https://github.com/niangmamath/hackathon
 # (projet à part, pas mélangé avec le monorepo de sourcing bancaire).
 #
-# Déclencheur : tous les 2 jours à 06:00 UTC (≈ 07h heure Maroc en hiver,
-# 08h en été). Cron GitHub Actions est "best-effort" côté horaire — un
-# retard de quelques minutes/heures ne pose pas de problème ici : les
-# hackathons ont des fenêtres de plusieurs jours, pas des publications
-# qui expirent dans l'heure. Le volume de requêtes réseau par run reste
-# modeste (3 sources, <100 pages au total) : pas de risque de rate-limit.
-#
-# Note : `*/2` sur le jour du mois saute du 31 au 1er en conservant la
-# parité (31 impair -> 1 impair) sauf les mois à 30 jours où il y a un
-# gap d'un jour (30 pair -> 1 impair). Acceptable pour une veille à
-# cadence "tous les 2 jours environ".
+# Déclencheur : tous les jours à 05:23 UTC (≈ 06h20 heure Maroc), comme le
+# site de stages. Minute volontairement décalée du début d'heure : le cron
+# GitHub Actions est "best-effort" et les crons à HH:00 sont les plus
+# retardés (constaté en 11/2026 : runs prévus à 06:00 lancés 7 à 12 h
+# plus tard). Le volume de requêtes réseau par run reste modeste
+# (3 sources, <100 pages au total) : pas de risque de rate-limit.
 #
 # Prérequis Settings → Secrets and variables → Actions sur ce dépôt :
 #   - DATABASE_URL  (chaîne Neon Postgres directe, port 5432, ?sslmode=require)
 on:
   schedule:
-    - cron: "0 6 */2 * *"
+    - cron: "23 5 * * *"
   workflow_dispatch: {}
 
 jobs:
