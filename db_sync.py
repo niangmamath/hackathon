@@ -168,7 +168,11 @@ def sync(items, database_url=None):
             conn.close()
     except Exception as e:
         print(f"  [db] ERREUR synchro base : {e}")
-        return
+        # Code de sortie non nul : le workflow passe en échec (et GitHub
+        # envoie une alerte) au lieu d'afficher un succès trompeur.
+        # Constaté du 21/11 au 25/11/2026 : mot de passe Neon invalide,
+        # site figé, runs pourtant verts.
+        raise SystemExit(1) from e
 
     print(f"  [db] {len(convenables)} hackathon(s) synchronisé(s) "
           f"({supprimes} retiré(s) car plus convenable(s)).")
