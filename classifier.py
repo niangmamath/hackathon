@@ -168,14 +168,35 @@ def is_online(poste, ville, texte=""):
     return any(k in blob for k in [strip_accents(k) for k in ONLINE_KW])
 
 
+def _au_maroc(blob):
+    """Le texte (déjà sans accents, en minuscules) cite-t-il le Maroc ou
+    une ville marocaine connue ? Mots entiers uniquement : « HackFest »
+    ne doit pas passer pour Fès."""
+    if "maroc" in blob or "morocco" in blob:
+        return True
+    return any(re.search(r"(?<![a-z])" + re.escape(strip_accents(v))
+                         + r"(?![a-z])", blob)
+               for _, variantes in VILLES_CONNUES for v in variantes)
+
+
 def hors_maroc(poste, ville, texte=""):
     """Un événement physique hors Maroc = écarté ; un événement en ligne
-    n'est jamais écarté sur ce critère."""
+    n'est jamais écarté sur ce critère.
+
+    Logique en LISTE BLANCHE quand la ville est renseignée : un événement
+    présentiel n'est gardé que si son lieu cite le Maroc ou une ville
+    marocaine. L'ancienne liste noire (Paris, Dubaï...) laissait passer
+    tous les lieux non listés : en 11/2026, ~18 hackathons MLH présentiels
+    (Thrissur, Manhattan, Ottawa, Sheffield...) étaient affichés.
+    Sans ville, on retombe sur la liste noire appliquée au titre (bénéfice
+    du doute pour les sources marocaines qui n'indiquent pas le lieu)."""
     if is_online(poste, ville, texte):
         return False
     blob = strip_accents(f"{poste} {ville}").lower()
-    if "maroc" in blob or "morocco" in blob:
+    if _au_maroc(blob):
         return False
+    if (ville or "").strip():
+        return True
     return any(k in blob for k in [strip_accents(k) for k in GEO_HORS_MAROC_KW])
 
 
@@ -196,6 +217,15 @@ VILLES_CONNUES = [
     ("Benguerir", ["benguerir", "ben guerir"]),
     ("El Jadida", ["el jadida"]),
     ("Ifrane", ["ifrane"]),
+    ("Mohammedia", ["mohammedia"]),
+    ("Safi", ["safi"]),
+    ("Khouribga", ["khouribga"]),
+    ("Béni Mellal", ["beni mellal", "béni mellal"]),
+    ("Nador", ["nador"]),
+    ("Settat", ["settat"]),
+    ("Laâyoune", ["laayoune", "laâyoune"]),
+    ("Dakhla", ["dakhla"]),
+    ("Essaouira", ["essaouira"]),
 ]
 
 

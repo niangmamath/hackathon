@@ -74,6 +74,24 @@ class TestGeo(unittest.TestCase):
     def test_maroc_dans_ville(self):
         self.assertFalse(hors_maroc("Hackathon IA", "Casablanca, Maroc", ""))
 
+    def test_ville_etrangere_non_listee(self):
+        # Liste blanche : une ville hors Maroc absente de l'ancienne liste
+        # noire (cas MLH réels de 11/2026) doit être écartée.
+        self.assertTrue(hors_maroc("BeachHack Season 8", "Thrissur, India", ""))
+        self.assertTrue(hors_maroc("Hack Cats", "Manhattan", ""))
+
+    def test_ville_marocaine_sans_pays(self):
+        self.assertFalse(hors_maroc("Hackathon IA", "Benguerir", ""))
+        self.assertFalse(hors_maroc("Hackathon IA", "Tangier", ""))
+
+    def test_mot_entier_ville(self):
+        # « HackFest » ne doit pas passer pour Fès.
+        self.assertTrue(hors_maroc("HackFest", "Toronto", ""))
+
+    def test_sans_ville_benefice_du_doute(self):
+        self.assertFalse(hors_maroc("Hackathon IA", "", ""))
+        self.assertTrue(hors_maroc("Hackathon Paris", "", ""))
+
     def test_normalisation_ville(self):
         self.assertEqual(normalize_ville("Casablanca, Casablanca-Settat, Maroc"),
                           "Casablanca")
